@@ -1,9 +1,16 @@
 import sqlite3
+import os
 from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent.parent / "inventory.db"
+# Streamlit Cloud는 /mount/src/ 가 읽기 전용이므로 쓰기 가능한 경로 선택
+_default_db = Path(__file__).parent.parent / "inventory.db"
+if os.access(_default_db.parent, os.W_OK):
+    DB_PATH = _default_db
+else:
+    DB_PATH = Path("/tmp") / "inventory.db"
+
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 

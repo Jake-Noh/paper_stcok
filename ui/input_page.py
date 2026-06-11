@@ -93,7 +93,7 @@ def _run_full_pipeline(target_yyyymm, products):
             if plan_qty is None and ym == target_yyyymm:
                 plan_qty = st.session_state.get(f"plan_{pid}", None)
 
-            if not plan_qty:
+            if plan_qty is None:
                 # 수요예측으로 자동 추정
                 fc = forecaster.predict_next_month(pid)
                 plan_qty = fc.get("recommended", 3000.0)
