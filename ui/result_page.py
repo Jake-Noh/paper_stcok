@@ -297,7 +297,7 @@ def render_result_page():
             src = gdp_disp.get("source", "default")
             src_label = {"ECOS_API": "🟢 한국은행 API (실시간)",
                          "cache":    "🟡 DB 캐시",
-                         "default":  "🔴 기본값(2.5%) — API 키 미설정"}.get(src, src)
+                         "default":  "🔴 기본값(연 2.5%, 분기 0.625%) — API 키 미설정"}.get(src, src)
             st.caption(f"데이터 출처: {src_label}")
             if src == "default":
                 st.warning("⚠️ ECOS API 키 미설정. '⚙️ 파라미터 설정'에서 입력하세요.")

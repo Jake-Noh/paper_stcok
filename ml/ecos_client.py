@@ -70,6 +70,9 @@ class EcosApiClient:
                 source = "cache"
 
         # Fill missing from cache
+        # 연간 기본값 2.5% 기준, 분기별은 2.5/4 = 0.625%
+        ANNUAL_DEFAULT = 2.5
+        QUARTER_DEFAULT = round(ANNUAL_DEFAULT / 4, 3)
         for q_key in ["Q1", "Q2", "Q3", "Q4"]:
             if quarters[q_key] is None:
                 indicator_key = f"GDP_growth_{q_key}"
@@ -77,10 +80,10 @@ class EcosApiClient:
                 if cached:
                     quarters[q_key] = cached["value"]
                 else:
-                    quarters[q_key] = 2.5  # Default fallback
+                    quarters[q_key] = QUARTER_DEFAULT
 
         valid = [v for v in quarters.values() if v is not None]
-        annual = sum(valid) / len(valid) if valid else 2.5
+        annual = sum(valid) if valid else ANNUAL_DEFAULT
 
         return {
             "Q1": quarters["Q1"],
