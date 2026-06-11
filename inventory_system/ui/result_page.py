@@ -134,14 +134,24 @@ def render_result_page():
     if not results:
         db_results = get_stock_results(limit=500)
         if db_results:
-            latest_calc   = max(r["calc_yyyymm"] for r in db_results)
-            all_latest    = [r for r in db_results if r["calc_yyyymm"] == latest_calc]
-            # 가장 이른 target_yyyymm = 산출 시작월(대상월)
-            min_target    = min(r.get("target_yyyymm", "999999") for r in all_latest)
-            results       = [r for r in all_latest if r.get("target_yyyymm") == min_target]
-            target_yyyymm = min_target
-            total_months  = len(set(r.get("target_yyyymm") for r in all_latest))
-            st.info(f"가장 최근 산출 결과를 표시합니다. (산출월: {latest_calc} | 산출 범위: {total_months}개월)")
+            latest_calc = max(r["calc_yyyymm"] for r in db_results)
+            all_latest  = [r for r in db_results if r["calc_yyyymm"] == latest_calc]
+            # 산출된 전체 월 목록
+            all_months  = sorted(set(r.get("target_yyyymm", "") for r in all_latest if r.get("target_yyyymm")))
+
+            # 월 선택 UI
+            month_labels = {m: f"{m[:4]}년 {m[4:]}월" for m in all_months}
+            selected_month = st.selectbox(
+                "📅 조회 대상월 선택",
+                options=all_months,
+                format_func=lambda m: month_labels.get(m, m),
+                index=0,
+                key="result_month_select"
+            )
+            st.caption(f"산출월: {latest_calc} | 산출 범위: {len(all_months)}개월 ({all_months[0][:4]}년 {all_months[0][4:]}월 ~ {all_months[-1][:4]}년 {all_months[-1][4:]}월)")
+
+            results       = [r for r in all_latest if r.get("target_yyyymm") == selected_month]
+            target_yyyymm = selected_month
         else:
             st.warning("산출된 운영재고 결과가 없습니다. '월별 실적 입력' 페이지에서 산출을 실행해 주세요.")
             return
