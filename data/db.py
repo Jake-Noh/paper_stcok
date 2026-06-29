@@ -106,6 +106,74 @@ def get_leadtime_records(product_id, window_months=12):
         return [dict(r) for r in rows]
 
 
+def upsert_product(product_id, product_name, pc_days, service_level=0.95):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO product (product_id, product_name, pc_days, service_level)
+               VALUES (?,?,?,?)
+               ON CONFLICT(product_id) DO UPDATE SET
+                 product_name=excluded.product_name,
+                 pc_days=excluded.pc_days,
+                 service_level=excluded.service_level""",
+            (product_id, product_name, pc_days, service_level),
+        )
+
+
+def batch_insert_monthly_sales(records):
+    """records: list of (product_id, yyyymm, plan_qty, actual_qty)"""
+    with get_conn() as conn:
+        for product_id, yyyymm, plan_qty, actual_qty in records:
+            plan_qty = plan_qty if plan_qty is not None else 0.0
+            deviation = (actual_qty - plan_qty) if actual_qty is not None else None
+            conn.execute(
+                "DELETE FROM monthly_sales WHERE product_id=? AND yyyymm=?",
+                (product_id, yyyymm),
+            )
+            conn.execute(
+                """INSERT INTO monthly_sales (product_id, yyyymm, plan_qty, actual_qty, deviation)
+                   VALUES (?,?,?,?,?)""",
+                (product_id, yyyymm, plan_qty, actual_qty, deviation),
+            )
+
+
+def batch_insert_leadtime(records):
+    """records: list of (product_id, order_date, receipt_date, lt_days)
+    Performs batch outlier marking per product after insert."""
+    import statistics
+    with get_conn() as conn:
+        conn.executemany(
+            """INSERT INTO leadtime_record
+               (product_id, order_date, receipt_date, lt_days, lt_adjusted, is_outlier, weight_qty)
+               VALUES (?,?,?,?,?,0,NULL)""",
+            [(r[0], r[1], r[2], r[3], r[3]) for r in records],
+        )
+    # Batch outlier correction per product
+    with get_conn() as conn:
+        products = conn.execute(
+            "SELECT DISTINCT product_id FROM leadtime_record"
+        ).fetchall()
+    for row in products:
+        pid = row["product_id"]
+        with get_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, lt_days FROM leadtime_record WHERE product_id=?", (pid,)
+            ).fetchall()
+        if len(rows) < 4:
+            continue
+        vals = [r["lt_days"] for r in rows]
+        mean = statistics.mean(vals)
+        stdev = statistics.stdev(vals)
+        upper = mean + 3 * stdev
+        lower = max(0.1, mean - 3 * stdev)
+        with get_conn() as conn:
+            for r in rows:
+                if r["lt_days"] > upper or r["lt_days"] < lower:
+                    conn.execute(
+                        "UPDATE leadtime_record SET is_outlier=1, lt_adjusted=? WHERE id=?",
+                        (mean, r["id"]),
+                    )
+
+
 def insert_leadtime_record(product_id, order_date, receipt_date, lt_days, weight_qty=None):
     from utils.outlier import detect_outlier, correct_outlier
 

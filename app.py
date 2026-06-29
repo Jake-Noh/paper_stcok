@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 from data.db import init_db
+from ui.import_page import render_import_page
 from ui.input_page import render_input_page
 from ui.result_page import render_result_page
 from ui.order_page import render_order_page
@@ -20,6 +21,7 @@ st.set_page_config(
 init_db()
 
 pages = {
+    "📂 백데이터 가져오기": render_import_page,
     "📥 월별 실적 입력": render_input_page,
     "📊 운영재고 산출 결과": render_result_page,
     "🚚 현재고 입력·발주 산출": render_order_page,
